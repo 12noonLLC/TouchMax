@@ -1,14 +1,14 @@
 # TouchMax by [12noon.com](https://12noon.com)
 
-Forgot to set your camera’s time to Daylight Saving Time? Change the Creation Time or Modified Time of any files or folders. Use an absolute time or one relative to the file’s creation time, file’s modified time, or current time.
+Did you forget to set your camera's time to Daylight Saving Time? TouchMax can fix it.
 
+TouchMax changes the Creation Time or Modified Time of any files or folders.
+It can use an absolute time or one relative to the file's creation time,
+file's modified time, or current time.
 
 ## Usage
 
 `TouchMax.exe [switches] <pattern>`
-
-[/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#]
-
 
 | Switch | Description |
 | :----- | :---------- |
