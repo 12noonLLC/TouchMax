@@ -573,7 +573,7 @@ class Program
 		Console.WriteLine(versionFile.LegalCopyright);
 		Console.WriteLine("12noon.com");
 		Console.WriteLine();
-		Console.WriteLine("Usage: [/recurse] [/setfiles] [/setfolders] [/setcreation] [/setmodified] [/usenow|usecreation|usemodified] [/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#] <pattern>");
+		Console.WriteLine("Usage: [/setfiles] [/setfolders] [/recurse] [/setcreation] [/setmodified] [/usenow|usecreation|usemodified] [/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#] <pattern>");
 		Console.WriteLine("\tsetfiles: set file timestamps");
 		Console.WriteLine("\tsetfolders: set folder timestamps");
 		Console.WriteLine("\trecurse: process subfolders");
@@ -583,7 +583,7 @@ class Program
 		Console.WriteLine("\tusecreation: set timestamp to file's creation time first");
 		Console.WriteLine("\tusemodified: set timestamp to file's modified time first");
 		Console.WriteLine("\tY - year, M - month, D - date, h - hour, m - minute");
-		Console.WriteLine("\t(All values are 1-based. January is 1, etc.)");
+		Console.WriteLine("\t(January is 1, etc. Dates are 1-31.)");
 		Console.WriteLine("\t+ increments that value");
 		Console.WriteLine("\t- decrements that value");
 		Console.WriteLine("\t= sets that value");
@@ -597,7 +597,7 @@ class Program
 		Console.WriteLine("Forgot to set camera ahead one hour for Daylight Saving Time. Set Creation Time of all JPG files in folder ahead one hour:");
 		Console.WriteLine("\ttouchmax.exe /setfiles /setcreation /h+1 *.jpg");
 		Console.WriteLine("Set ModifiedTime of text files to a month ago and ten minutes ahead:");
-		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usenow /M-1 /m+1 *.txt");
+		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usenow /M-1 /m+10 *.txt");
 		Console.WriteLine("Set CreationTime to three days before the ModifiedTime:");
 		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usemodified /D-3 *.txt");
 		Console.WriteLine("Set a file's ModifiedTime to 15 Sep 2008:");
