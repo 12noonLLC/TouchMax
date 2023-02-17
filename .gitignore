@@ -1,0 +1,24 @@
+desktop.ini
+Thumbs.db
+
+**/.vs/
+**/Win32/
+**/x64/
+**/x86/
+**/amd64/
+**/ipch/
+**/Debug/
+**/Debug Console/
+**/Release/
+**/Release Console/
+**/obj/
+**/bin/
+**/AppPackages/
+**/TestResults/
+**/Generated Files/
+
+#
+#	Added by SourceTree
+#
+publish/
+Properties/

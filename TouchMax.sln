@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33403.182
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TouchMax", ".\TouchMax.csproj", "{F24563D3-8CC8-44DF-BE42-ECD7FFEB74A8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{78FA170A-D8B3-4C28-B05B-0E79DC624A64}"
+	ProjectSection(SolutionItems) = preProject
+		.\TestTouchMax.ps1 = .\TestTouchMax.ps1
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F24563D3-8CC8-44DF-BE42-ECD7FFEB74A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F24563D3-8CC8-44DF-BE42-ECD7FFEB74A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F24563D3-8CC8-44DF-BE42-ECD7FFEB74A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F24563D3-8CC8-44DF-BE42-ECD7FFEB74A8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0A9F09B4-86DB-401A-89A3-7C326B93B682}
+	EndGlobalSection
+EndGlobal

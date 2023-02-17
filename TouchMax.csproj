@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Version>3.0.2</Version>
+    <Authors>12noon, Stefan K.S. Tucker</Authors>
+    <Company>12noon</Company>
+    <Product>TouchMax</Product>
+    <PackageId>TouchMax</PackageId>
+    <Description>Forgot to set your camera's time to Daylight Saving Time? Change the Creation Time or Modified Time of any files or folders. Use an absolute time or one relative to the file’s creation time, file’s modified time, or current time.</Description>
+    <Copyright>(c) 2006-2023 12noon, Stefan K.S. Tucker</Copyright>
+    <PackageProjectUrl>https://12noon.com</PackageProjectUrl>
+    <AssemblyName>TouchMax</AssemblyName>
+    <RootNamespace>TouchMax</RootNamespace>
+    <Nullable>enable</Nullable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>StrongNameKeyFile.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="publish\**" />
+    <EmbeddedResource Remove="publish\**" />
+    <None Remove="publish\**" />
+  </ItemGroup>
+
+</Project>
