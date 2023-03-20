@@ -440,7 +440,7 @@ class Program
 
 						default:
 							Console.WriteLine($"Unrecognized switch: {a}");
-							break;
+							throw new ArgumentException("Unrecognized switch", a);
 					}
 
 					continue;
