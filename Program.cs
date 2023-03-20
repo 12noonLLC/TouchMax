@@ -127,7 +127,7 @@ class Program
 		{
 			try
 			{
-				if (!dir.GetFiles(strPattern).Any(fileinfo => !handlerFileInfo(fileinfo)))
+				if (dir.GetFiles(strPattern).Any(fileinfo => !handlerFileInfo(fileinfo)))
 				{
 					return false;
 				}
@@ -146,7 +146,7 @@ class Program
 		{
 			try
 			{
-				if (!dir.GetDirectories(strPattern).Any(dirinfo => !handlerDirInfo(dirinfo)))
+				if (dir.GetDirectories(strPattern).Any(dirinfo => !handlerDirInfo(dirinfo)))
 				{
 					return false;
 				}
