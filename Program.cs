@@ -189,7 +189,7 @@ class Program
 			}
 			catch (IOException ex)
 			{
-				Console.WriteLine($"Unable to set CreationTime of {fileinfo.Name} to {dtNew}.");
+				Console.WriteLine($"Unable to set Creation-Time of {fileinfo.Name} to {dtNew}.");
 				Console.WriteLine(ex.Message);
 			}
 		}
@@ -205,7 +205,7 @@ class Program
 			}
 			catch (IOException ex)
 			{
-				Console.WriteLine($"Unable to set ModifiedTime of {fileinfo.Name} to {dtNew}.");
+				Console.WriteLine($"Unable to set Modified-Time of {fileinfo.Name} to {dtNew}.");
 				Console.WriteLine(ex.Message);
 			}
 		}
@@ -230,7 +230,7 @@ class Program
 			}
 			catch (IOException ex)
 			{
-				Console.WriteLine($"Unable to set CreationTime of {dirinfo.Name} to {dtNew}.");
+				Console.WriteLine($"Unable to set Creation-Time of {dirinfo.Name} to {dtNew}.");
 				Console.WriteLine(ex.Message);
 			}
 		}
@@ -246,7 +246,7 @@ class Program
 			}
 			catch (IOException ex)
 			{
-				Console.WriteLine($"Unable to set ModifiedTime of {dirinfo.Name} to {dtNew}.");
+				Console.WriteLine($"Unable to set Modified-Time of {dirinfo.Name} to {dtNew}.");
 				Console.WriteLine(ex.Message);
 			}
 		}
@@ -539,38 +539,44 @@ class Program
 		System.Diagnostics.FileVersionInfo versionFile = System.Diagnostics.FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, $"{exeName}.exe"));
 
 		Console.WriteLine();
-		Console.WriteLine("{0} {1} {2}", versionFile.CompanyName, versionFile.ProductName, versionFile.ProductVersion);
-		Console.WriteLine(versionFile.LegalCopyright);
+		Console.WriteLine("{0} {1} {2}", versionFile.CompanyName ?? string.Empty, versionFile.ProductName ?? string.Empty, versionFile.ProductVersion ?? string.Empty);
+		Console.WriteLine("{0}", versionFile.LegalCopyright ?? string.Empty);
 		Console.WriteLine("12noon.com");
 		Console.WriteLine();
-		Console.WriteLine("Usage: [/setfiles] [/setfolders] [/recurse] [/setcreation] [/setmodified] [/usenow|usecreation|usemodified] [/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#] <pattern>");
-		Console.WriteLine("\tsetfiles: set file timestamps");
-		Console.WriteLine("\tsetfolders: set folder timestamps");
-		Console.WriteLine("\trecurse: process subfolders");
-		Console.WriteLine("\tsetcreation: change creation time");
-		Console.WriteLine("\tsetmodified: change modified time");
-		Console.WriteLine("\tusenow: set timestamp to current time first");
-		Console.WriteLine("\tusecreation: set timestamp to file's creation time first");
-		Console.WriteLine("\tusemodified: set timestamp to file's modified time first");
-		Console.WriteLine("\tY - year, M - month, D - date, h - hour, m - minute");
-		Console.WriteLine("\t(January is 1, etc. Dates are 1-31.)");
-		Console.WriteLine("\t+ increments that value");
-		Console.WriteLine("\t- decrements that value");
-		Console.WriteLine("\t= sets that value");
+		Console.WriteLine("USAGE");
+		Console.WriteLine("   [/setfiles] [/setfolders] [/recurse] [/setcreation] [/setmodified] [/usenow|/usecreation|/usemodified]");
+		Console.WriteLine("   [/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#] <pattern>");
+		Console.WriteLine("\t/setfiles: set file timestamps");
+		Console.WriteLine("\t/setfolders: set folder timestamps");
+		Console.WriteLine("\t/recurse: process subfolders");
+		Console.WriteLine("\t/setcreation: change creation time");
+		Console.WriteLine("\t/setmodified: change modified time");
+		Console.WriteLine("\t/usenow: set timestamp to current time first");
+		Console.WriteLine("\t/usecreation: set timestamp to file's creation time first");
+		Console.WriteLine("\t/usemodified: set timestamp to file's modified time first");
+		Console.WriteLine("\t/Y - year, /M - month, /D - date, /h - hour, /m - minute");
+		Console.WriteLine("\t\t(January is 1, etc. Dates are 1-31.)");
+		Console.WriteLine("\t\t+ increments the current value by the specified amount");
+		Console.WriteLine("\t\t- decrements the current value by the specified amount");
+		Console.WriteLine("\t\t= sets to the specified value");
 		Console.WriteLine();
+		Console.WriteLine("PROCESS");
 		Console.WriteLine("These are the steps it takes to set a file or folder's timestamp:");
 		Console.WriteLine("\t1. Set timestamp to now, if specified");
 		Console.WriteLine("\t2. Apply absolute values, if any");
 		Console.WriteLine("\t3. Apply relative changes, if any");
 		Console.WriteLine();
-		Console.WriteLine("Examples:");
-		Console.WriteLine("Forgot to set camera ahead one hour for Daylight Saving Time. Set Creation Time of all JPG files in folder ahead one hour:");
-		Console.WriteLine("\ttouchmax.exe /setfiles /setcreation /h+1 *.jpg");
-		Console.WriteLine("Set ModifiedTime of text files to a month ago and ten minutes ahead:");
+		Console.WriteLine("EXAMPLES");
+		Console.WriteLine("Forgot to set camera ahead one hour for Daylight Saving Time. Set Creation-Time of all JPG files in all folders ahead one hour:");
+		Console.WriteLine("\ttouchmax.exe /recurse /setfiles /setcreation /h+1 *.jpg");
+		Console.WriteLine();
+		Console.WriteLine("Set Modified-Time of text files to a month ago and ten minutes ahead:");
 		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usenow /M-1 /m+10 *.txt");
-		Console.WriteLine("Set CreationTime to three days before the ModifiedTime:");
+		Console.WriteLine();
+		Console.WriteLine("Set Creation-Time to three days before the ModifiedTime:");
 		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usemodified /D-3 *.txt");
-		Console.WriteLine("Set a file's ModifiedTime to 15 Sep 2008:");
+		Console.WriteLine();
+		Console.WriteLine("Set a file's Modified-Time to 15 Sep 2008:");
 		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usemodified /Y=2008 /M=9 /D=15 test.txt");
 	}
 }
