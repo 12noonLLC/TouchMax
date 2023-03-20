@@ -2,8 +2,6 @@
 using System.IO;
 using System.Linq;
 
-//TODO: Add /test mode?
-
 namespace TouchMax;
 
 /*
@@ -54,7 +52,7 @@ class Program
 	{
 		if (args.Length < 4)
 		{
-			//System.Console.WriteLine("Command line: " + String.Join(";", args));
+			//Console.WriteLine("Command line: " + String.Join(";", args));
 			ShowUsage();
 			return;
 		}
@@ -68,36 +66,6 @@ class Program
 		{
 			return;
 		}
-
-		/*
-		bool bAdd = args[0].StartsWith("+");
-		args[0] = args[0].Remove(0, 1);
-		int ixColon = args[0].IndexOf(':');
-		int nHours, nMinutes;
-		if (ixColon == -1)
-		{
-			nHours = Int16.Parse(args[0]);
-			nMinutes = 0;
-		}
-		else if (ixColon == args[0].Length - 1)
-		{
-			ShowUsage();
-			return;
-		}
-		else
-		{
-			nMinutes = Int16.Parse(args[0].Substring(ixColon + 1));
-			args[0] = args[0].Remove(ixColon);
-			nHours = Int16.Parse(args[0]);
-		}
-		TimeSpan tsOffset = new TimeSpan(nHours, nMinutes, 0);
-		if (!bAdd)
-		{
-			tsOffset = tsOffset.Negate();
-		}
-
-		pgm.SetTimeSpan(tsOffset);
-		*/
 
 		pgm.Touch(pgm._strDirectory, pgm._strPattern);
 	}
@@ -144,33 +112,17 @@ class Program
 		Console.WriteLine(strIndent + dir.Name + Path.AltDirectorySeparatorChar);
 
 		/*
-			* Since we're using a pattern, the subdirectories might not (probably
-			* won't) match it. So, we process any files that match the pattern.
-			* Then, separately, we process all subdirectories.
-			* */
-		//foreach (FileSystemInfo fsinfo in dir.GetFileSystemInfos(strPattern))
-		//{
-		//	if (fsinfo is FileInfo)
-		//	{
-		//		FileInfo fileinfo = fsinfo as FileInfo;
-		//		if ((handlerFileInfo != null) && !handlerFileInfo(fileinfo))
-		//			return false;
-		//	}
-		//	else if (fsinfo is DirectoryInfo)
-		//	{
-		//		DirectoryInfo dirinfo = fsinfo as DirectoryInfo;
-		//		if ((handlerDirInfo != null) && !handlerDirInfo(dirinfo))
-		//			return false;
-		//
-		//		TouchMax.ProcessSubdirectoriesAndFiles(handlerDirInfo, handlerFileInfo, dirinfo.FullName, strPattern);
-		//	}
-		//	else
-		//		System.Console.WriteLine($"Bad {nameof(FileSystemInfo)} type.");
-		//}
+		 * Since we're using a pattern, the subdirectories might not (probably
+		 * won't) match it. So, we process any files that match the pattern.
+		 * Then, separately, we process all subdirectories.
+		 *
+		 * Alternative: FileSystemInfo fsinfos = dir.GetFileSystemInfos(strPattern);
+		 */
 
 		/*
-			* Process each file
-			*/
+		 * Process each file
+		 * If any return false, we quit.
+		 */
 		if (_bSetFiles && (handlerFileInfo is not null))
 		{
 			try
@@ -187,8 +139,9 @@ class Program
 		}
 
 		/*
-			* Process each folder
-			*/
+		 * Process each folder
+		 * If any return false, we quit.
+		 */
 		if (_bSetFolders && (handlerDirInfo is not null))
 		{
 			try
@@ -205,8 +158,8 @@ class Program
 		}
 
 		/*
-			* Recurse into all subfolders
-			*/
+		 * Recurse into all subfolders
+		 */
 		if (_bRecurse)
 		{
 			foreach (DirectoryInfo dirinfo in dir.GetDirectories())
@@ -304,9 +257,9 @@ class Program
 	private DateTime DetermineNewDateTime(DateTime dt, DateTime dtCreation, DateTime dtModified)
 	{
 		/*
-			* First, determine if we should start with the file's date/time
-			* or if we should start with the current time.
-			*/
+		 * First, determine if we should start with the file's date/time
+		 * or if we should start with the current time.
+		 */
 		DateTime dtNew = dt;
 		if (_bUseNow)
 		{
@@ -322,8 +275,8 @@ class Program
 		}
 
 		/*
-			* Next, apply any absolute settings that were specified
-			*/
+		 * Next, apply any absolute settings that were specified
+		 */
 		try
 		{
 			if (_absYear.HasValue)
@@ -354,8 +307,8 @@ class Program
 		}
 
 		/*
-			* Finally, apply any specified relative changes.
-			*/
+		 * Finally, apply any specified relative changes.
+		 */
 		dtNew = dtNew.AddYears(_relYears);
 		dtNew = dtNew.AddMonths(_relMonths);
 		dtNew = dtNew.AddDays(_relDays);
@@ -422,27 +375,39 @@ class Program
 						{
 							int n = ParseArgumentNumber(a);
 							if (a[2] == '=')
+							{
 								_absYear = n;
+							}
 							else
+							{
 								_relYears = n;
+							}
 							break;
 						}
 						case 'M':
 						{
 							int n = ParseArgumentNumber(a);
 							if (a[2] == '=')
+							{
 								_absMonth = n;
+							}
 							else
+							{
 								_relMonths = n;
+							}
 							break;
 						}
 						case 'D':
 						{
 							int n = ParseArgumentNumber(a);
 							if (a[2] == '=')
+							{
 								_absDate = n;
+							}
 							else
+							{
 								_relDays = n;
+							}
 							break;
 						}
 
@@ -450,18 +415,26 @@ class Program
 						{
 							int n = ParseArgumentNumber(a);
 							if (a[2] == '=')
+							{
 								_absHour = n;
+							}
 							else
+							{
 								_relHours = n;
+							}
 							break;
 						}
 						case 'm':
 						{
 							int n = ParseArgumentNumber(a);
 							if (a[2] == '=')
+							{
 								_absMinute = n;
+							}
 							else
+							{
 								_relMinutes = n;
+							}
 							break;
 						}
 
@@ -473,20 +446,17 @@ class Program
 					continue;
 				}
 
-//					// if dir not set yet, this is it
-//					if (_strDirectory == string.Empty)
-//						_strDirectory = a;
 				// maybe it's the pattern
-				if (String.IsNullOrEmpty(_strPattern))
+				if (string.IsNullOrEmpty(_strPattern))
 				{
 					_strPattern = a;
 					/*
-						* The user may have specified a path (absolute or relative) and
-						* we need to split them up.
-						*/
+					 * The user may have specified a path (absolute or relative) and
+					 * we need to split them up.
+					 */
 					_strDirectory = Path.GetDirectoryName(_strPattern) ?? ".";
 					_strPattern = Path.GetFileName(_strPattern);
-					if (String.IsNullOrEmpty(_strDirectory))
+					if (string.IsNullOrEmpty(_strDirectory))
 					{
 						_strDirectory = ".";
 					}
@@ -543,9 +513,9 @@ class Program
 				// + or - or =
 				switch (s[2])
 				{
-					case '-': return -Int16.Parse(s[3..]);
-					case '+': return Int16.Parse(s[3..]);
-					case '=': return Int16.Parse(s[3..]);
+					case '-': return -short.Parse(s[3..]);
+					case '+': return short.Parse(s[3..]);
+					case '=': return short.Parse(s[3..]);
 					default:
 						Console.WriteLine($"Must use +, -, or = after switch {s}");
 						break;
