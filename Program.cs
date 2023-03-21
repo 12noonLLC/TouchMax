@@ -13,6 +13,8 @@ namespace TouchMax;
 	*/
 class Program
 {
+	private bool _bTest = false;
+
 	private string _strDirectory = ".";
 	private string _strPattern = string.Empty;
 
@@ -183,15 +185,22 @@ class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtCreation, dtCreation, dtModified);
 
-			try
+			if (_bTest)
 			{
-				File.SetCreationTime(fileinfo.FullName, dtNew);
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), dtNew.ToString());
 			}
-			catch (IOException ex)
+			else
 			{
-				Console.WriteLine($"Unable to set Creation-Time of {fileinfo.Name} to {dtNew}.");
-				Console.WriteLine(ex.Message);
+				try
+				{
+					File.SetCreationTime(fileinfo.FullName, dtNew);
+					Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), File.GetCreationTime(fileinfo.FullName).ToString());
+				}
+				catch (IOException ex)
+				{
+					Console.WriteLine($"Unable to set Creation-Time of {fileinfo.Name} to {dtNew}.");
+					Console.WriteLine(ex.Message);
+				}
 			}
 		}
 
@@ -199,15 +208,22 @@ class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtModified, dtCreation, dtModified);
 
-			try
+			if (_bTest)
 			{
-				File.SetLastWriteTime(fileinfo.FullName, dtNew);
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), dtNew.ToString());
 			}
-			catch (IOException ex)
+			else
 			{
-				Console.WriteLine($"Unable to set Modified-Time of {fileinfo.Name} to {dtNew}.");
-				Console.WriteLine(ex.Message);
+				try
+				{
+					File.SetLastWriteTime(fileinfo.FullName, dtNew);
+					Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), File.GetLastWriteTime(fileinfo.FullName).ToString());
+				}
+				catch (IOException ex)
+				{
+					Console.WriteLine($"Unable to set Modified-Time of {fileinfo.Name} to {dtNew}.");
+					Console.WriteLine(ex.Message);
+				}
 			}
 		}
 
@@ -224,15 +240,22 @@ class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtCreation, dtCreation, dtModified);
 
-			try
+			if (_bTest)
 			{
-				Directory.SetCreationTime(dirinfo.FullName, dtNew);
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), dtNew.ToString());
 			}
-			catch (IOException ex)
+			else
 			{
-				Console.WriteLine($"Unable to set Creation-Time of {dirinfo.Name} to {dtNew}.");
-				Console.WriteLine(ex.Message);
+				try
+				{
+					Directory.SetCreationTime(dirinfo.FullName, dtNew);
+					Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), Directory.GetCreationTime(dirinfo.FullName).ToString());
+				}
+				catch (IOException ex)
+				{
+					Console.WriteLine($"Unable to set Creation-Time of {dirinfo.Name} to {dtNew}.");
+					Console.WriteLine(ex.Message);
+				}
 			}
 		}
 
@@ -240,15 +263,22 @@ class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtModified, dtCreation, dtModified);
 
-			try
+			if (_bTest)
 			{
-				Directory.SetLastWriteTime(dirinfo.FullName, dtNew);
-				Console.WriteLine("\tM: {0}\t{1}", dtModified.ToString(), Directory.GetLastWriteTime(dirinfo.FullName).ToString());
+				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), dtNew.ToString());
 			}
-			catch (IOException ex)
+			else
 			{
-				Console.WriteLine($"Unable to set Modified-Time of {dirinfo.Name} to {dtNew}.");
-				Console.WriteLine(ex.Message);
+				try
+				{
+					Directory.SetLastWriteTime(dirinfo.FullName, dtNew);
+					Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), Directory.GetLastWriteTime(dirinfo.FullName).ToString());
+				}
+				catch (IOException ex)
+				{
+					Console.WriteLine($"Unable to set Modified-Time of {dirinfo.Name} to {dtNew}.");
+					Console.WriteLine(ex.Message);
+				}
 			}
 		}
 
@@ -329,7 +359,12 @@ class Program
 				if (a.StartsWith("-") || a.StartsWith("/"))
 				{
 					string key = a[1..].ToLower();
-					if (key.StartsWith("recurse"))
+					if (key.StartsWith("test"))
+					{
+						_bTest = true;
+						continue;
+					}
+					else if (key.StartsWith("recurse"))
 					{
 						_bRecurse = true;
 						continue;
@@ -474,27 +509,47 @@ class Program
 			}
 		}
 
-		/*
-		Console.WriteLine("Recurse? " + (_bRecurse ? "YES" : "NO"));
-		Console.WriteLine("Set files? " + (_bSetFiles ? "YES" : "NO"));
-		Console.WriteLine("Set folders? " + (_bSetFolders ? "YES" : "NO"));
-		Console.WriteLine("Now: " + _dtNow.ToString());
-		Console.WriteLine("Base: Use " + (_bUseNow ? "NOW" : _bUseCreation ? "CREATION" : "MODIFIED"));
-		Console.WriteLine("Absolute:");
-		Console.WriteLine("\tyear = " + _absYear);
-		Console.WriteLine("\tmonth = " + _absMonth);
-		Console.WriteLine("\tdate = " + _absDate);
-		Console.WriteLine("\thour = " + _absHour);
-		Console.WriteLine("\tminute = " + _absMinute);
-		Console.WriteLine("Relative:");
-		Console.WriteLine("\tyears = " + _relYears);
-		Console.WriteLine("\tmonths = " + _relMonths);
-		Console.WriteLine("\tdays = " + _relDays);
-		Console.WriteLine("\thour = " + _relHours);
-		Console.WriteLine("\tminute = " + _relMinutes);
-		Console.WriteLine("Directory: " + _strDirectory);
-		Console.WriteLine("Pattern: " + _strPattern);
-		*/
+		if (_bTest)
+		{
+			Console.WriteLine();
+			Console.WriteLine("** TEST MODE **");
+			Console.WriteLine("Recurse? " + (_bRecurse ? "YES" : "NO"));
+			Console.WriteLine("Set files? " + (_bSetFiles ? "YES" : "NO"));
+			Console.WriteLine("Set folders? " + (_bSetFolders ? "YES" : "NO"));
+			Console.WriteLine("Now: " + _dtNow.ToString());
+			Console.WriteLine("Base: Use " + (_bUseNow ? "NOW" : _bUseCreation ? "CREATION" : "MODIFIED"));
+			if ((_absYear is not null) || (_absMonth is not null) || (_absDate is not null) || (_absHour is not null) || (_absMinute is not null))
+			{
+				Console.WriteLine("Absolute:");
+				if (_absYear.HasValue)
+					Console.WriteLine("\tyear = " + _absYear);
+				if (_absMonth.HasValue)
+					Console.WriteLine("\tmonth = " + _absMonth);
+				if (_absDate.HasValue)
+					Console.WriteLine("\tdate = " + _absDate);
+				if (_absHour.HasValue)
+					Console.WriteLine("\thour = " + _absHour);
+				if (_absMinute.HasValue)
+					Console.WriteLine("\tminute = " + _absMinute);
+			}
+			if ((_relYears != 0) || (_relMonths != 0) || (_relDays != 0) || (_relHours != 0) || (_relMinutes != 0))
+			{
+				Console.WriteLine("Relative:");
+				if (_relYears != 0)
+					Console.WriteLine("\tyears = " + _relYears);
+				if (_relMonths != 0)
+					Console.WriteLine("\tmonths = " + _relMonths);
+				if (_relDays != 0)
+					Console.WriteLine("\tdays = " + _relDays);
+				if (_relHours != 0)
+					Console.WriteLine("\thour = " + _relHours);
+				if (_relMinutes != 0)
+						Console.WriteLine("\tminute = " + _relMinutes);
+			}
+			Console.WriteLine("Directory: " + _strDirectory);
+			Console.WriteLine("Pattern: " + _strPattern);
+		}
+
 		if (!_bSetFiles && !_bSetFolders)
 		{
 			Console.WriteLine("You must set file or folder timestamps.");
@@ -545,7 +600,7 @@ class Program
 		Console.WriteLine("12noon.com");
 		Console.WriteLine();
 		Console.WriteLine("USAGE");
-		Console.WriteLine("   [/setfiles] [/setfolders] [/recurse] [/setcreation] [/setmodified] [/usenow|/usecreation|/usemodified]");
+		Console.WriteLine("   [/test] [/setfiles] [/setfolders] [/recurse] [/setcreation] [/setmodified] [/usenow|/usecreation|/usemodified]");
 		Console.WriteLine("   [/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#] <pattern>");
 		Console.WriteLine("\t/setfiles: set file timestamps");
 		Console.WriteLine("\t/setfolders: set folder timestamps");

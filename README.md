@@ -14,6 +14,7 @@ file's modified time, or current time.
 
 | Switch | Description |
 | :----- | :---------- |
+| /test | Display values without making changes
 | /setfiles | set file timestamps
 | /setfolders | set folder timestamps
 | /recurse | process subfolders
