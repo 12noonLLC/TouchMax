@@ -14,6 +14,7 @@ name: .NET
 
 #
 # ncipollo/release-action requires write permission.
+#   "Error: Error 403: Resource not accessible by integration"
 # Alternative: Set Settings > Actions > General > Workflow permissions > Read and write
 #
 permissions: write-all
