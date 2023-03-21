@@ -49,11 +49,11 @@ jobs:
 
       # https://docs.microsoft.com/en-us/dotnet/core/tools/
       - name: Build
-        run: dotnet build TouchMax/TouchMax.csproj --nologo --self-contained --configuration Release --runtime win-x64
+        run: dotnet build TouchMax.csproj --nologo --self-contained --configuration Release --runtime win-x64
 
       - name: Build single-file deployment
         # Publish to `release` folder for github-tag-action step.
-        run: dotnet publish TouchMax/TouchMax.csproj -p:PublishProfile=FolderProfile -o ./release/
+        run: dotnet publish TouchMax.csproj -p:PublishProfile=FolderProfile -o ./release/
 
       # Upload release artifact to share with next job
       # https://docs.github.com/en/actions/guides/storing-workflow-data-as-artifacts#about-workflow-artifacts
