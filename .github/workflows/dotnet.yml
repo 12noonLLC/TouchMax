@@ -12,6 +12,12 @@ name: .NET
 #   #major
 #
 
+#
+# ncipollo/release-action requires write permission.
+# Alternative: Set Settings > Actions > General > Workflow permissions > Read and write
+#
+permissions: write-all
+
 on:
   workflow_dispatch:
     branches: [ master, yaml ]
