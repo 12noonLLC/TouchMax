@@ -44,8 +44,8 @@ class Program
 	private bool _bUseNow = false;
 	private readonly DateTime _dtNow = DateTime.Now;
 
-	private delegate bool DirectoryInfoHandler(DirectoryInfo dirinfo);
-	private delegate bool FileInfoHandler(FileInfo dirinfo);
+	private delegate bool DirectoryInfoHandler(DirectoryInfo dirinfo, string outputPrefix);
+	private delegate bool FileInfoHandler(FileInfo dirinfo, string outputPrefix);
 
 
 	static void Main(string[] args)
@@ -108,8 +108,9 @@ class Program
 		}
 
 		Console.WriteLine();
-		string strIndent = Path.AltDirectorySeparatorChar.ToString().PadLeft(1 + nLevel, '\t');
-		Console.WriteLine(strIndent + dir.Name + Path.AltDirectorySeparatorChar);
+
+		string strIndent = string.Empty.PadLeft(nLevel, '\t');
+		Console.WriteLine(strIndent + dir.FullName + Path.AltDirectorySeparatorChar);
 
 		/*
 		 * Since we're using a pattern, the subdirectories might not (probably
@@ -127,7 +128,7 @@ class Program
 		{
 			try
 			{
-				if (dir.GetFiles(strPattern).Any(fileinfo => !handlerFileInfo(fileinfo)))
+				if (dir.GetFiles(strPattern).Any(fileinfo => !handlerFileInfo(fileinfo, strIndent)))
 				{
 					return false;
 				}
@@ -146,7 +147,7 @@ class Program
 		{
 			try
 			{
-				if (dir.GetDirectories(strPattern).Any(dirinfo => !handlerDirInfo(dirinfo)))
+				if (dir.GetDirectories(strPattern).Any(dirinfo => !handlerDirInfo(dirinfo, strIndent)))
 				{
 					return false;
 				}
@@ -171,9 +172,9 @@ class Program
 		return true;
 	}
 
-	private bool OffsetFile(FileInfo fileinfo)
+	private bool OffsetFile(FileInfo fileinfo, string outputPrefix)
 	{
-		Console.WriteLine(fileinfo.Name);
+		Console.WriteLine($"{outputPrefix}{fileinfo.Name}");
 
 		DateTime dtCreation = File.GetCreationTime(fileinfo.FullName);
 		DateTime dtModified = File.GetLastWriteTime(fileinfo.FullName);
@@ -185,7 +186,7 @@ class Program
 			try
 			{
 				File.SetCreationTime(fileinfo.FullName, dtNew);
-				Console.WriteLine("\tC: {0}\t{1}", dtCreation.ToString(), File.GetCreationTime(fileinfo.FullName).ToString());
+				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), dtNew.ToString());
 			}
 			catch (IOException ex)
 			{
@@ -201,7 +202,7 @@ class Program
 			try
 			{
 				File.SetLastWriteTime(fileinfo.FullName, dtNew);
-				Console.WriteLine("\tM: {0}\t{1}", dtModified.ToString(), File.GetLastWriteTime(fileinfo.FullName).ToString());
+				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), dtNew.ToString());
 			}
 			catch (IOException ex)
 			{
@@ -213,9 +214,9 @@ class Program
 		return true;
 	}
 
-	private bool OffsetDirectory(DirectoryInfo dirinfo)
+	private bool OffsetDirectory(DirectoryInfo dirinfo, string outputPrefix)
 	{
-		Console.WriteLine(dirinfo.Name);
+		Console.WriteLine($"{outputPrefix}{dirinfo.Name}/");
 
 		DateTime dtCreation = Directory.GetCreationTime(dirinfo.FullName);
 		DateTime dtModified = Directory.GetLastWriteTime(dirinfo.FullName);
@@ -226,7 +227,7 @@ class Program
 			try
 			{
 				Directory.SetCreationTime(dirinfo.FullName, dtNew);
-				Console.WriteLine("\tC: {0}\t{1}", dtCreation.ToString(), Directory.GetCreationTime(dirinfo.FullName).ToString());
+				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), dtNew.ToString());
 			}
 			catch (IOException ex)
 			{
