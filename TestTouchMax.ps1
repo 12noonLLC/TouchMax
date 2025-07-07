@@ -2,7 +2,7 @@
 # Set-ExecutionPolicy Unrestricted -Scope CurrentUser
 #
 
-set-psdebug –strict
+Set-PSDebug -Strict
 
 
 #
