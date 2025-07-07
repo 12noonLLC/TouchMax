@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
-    <Version>3.1.0</Version>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Version>3.2.0</Version>
     <Authors>12noon LLC</Authors>
     <Company>12noon LLC</Company>
     <Product>TouchMax</Product>
@@ -16,6 +16,7 @@
     <AssemblyOriginatorKeyFile>StrongNameKeyFile.snk</AssemblyOriginatorKeyFile>
     <Platforms>AnyCPU;x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
   </PropertyGroup>
 
   <ItemGroup>
