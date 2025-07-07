@@ -1,0 +1,333 @@
+﻿# .github/workflows/Build.yml
+# Build and Release workflow for TouchMax
+#
+# - Trigger on push to any branch, on version tags (e.g., v1.2.3), or on manual dispatch.
+# - If a version tag (e.g., v1.2.3) is pushed, create a GitHub release for that version if not already present.
+# - If the version tag is not on the 'main' branch, mark the GitHub release as 'draft'.
+# - Manual dispatch builds the project but does not create a GitHub release.
+
+name: Build and Release
+
+on:
+  push:
+    branches: [ '**' ]
+    tags:
+      - 'v*' # Match version tags like v1.2.3
+    paths-ignore:
+      - '**/*.gitignore'
+      - '**/*.gitattributes'
+      - '**/*.md'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main, yaml ]
+    paths-ignore:
+      - '**/*.gitignore'
+      - '**/*.gitattributes'
+      - '**/*.md'
+      - 'LICENSE'
+  workflow_dispatch:
+
+env:
+  # Path to the project files relative to the root of the project.
+  PROJECT_APP_FILE_PATH:     TouchMax.csproj
+  PROJECT_TESTS_FILE_PATH:   TestTouchMax.ps1
+
+  # Configuration type to build.
+  # You can convert this to a build matrix if you need coverage of multiple configuration types.
+  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  BUILD_CONFIGURATION: Release
+
+  ARTIFACT_NAME: TouchMax
+  ARTIFACT_PACKAGE: package-touchmax
+
+concurrency:
+  group: touchmax-${{ github.sha }}
+  cancel-in-progress: true
+
+# Jobs are run in parallel unless `needs` is specified.
+# https://docs.github.com/en/actions/learn-github-actions/managing-complex-workflows#creating-dependent-jobs
+jobs:
+  precheck:
+    name: 🧠 Check for redundant runs
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip.outputs.should_skip }}
+    steps:
+      - id: skip
+        uses: fkirc/skip-duplicate-actions@v5.3.1
+        with:
+          paths_ignore: '[ "**/*.gitignore", "**/*.gitattributes", "**/*.md", "LICENSE" ]'
+          skip_after_successful_duplicate: 'false'
+          concurrent_skipping: 'same_content_newer'
+          cancel_others: 'true'
+
+  build:
+    name: 🏗 Build TouchMax
+    needs: precheck
+    if: ${{ needs.precheck.outputs.should_skip != 'true' }}
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 🚫 Prevent rerun if skipped
+        shell: bash
+        run: |
+          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
+            echo "This is a rerun. Skipping build."
+            exit 1
+          fi
+
+      - name: 🗒️ Output state
+        run: |
+          echo "🚀 Building..."
+          echo "GITHUB_SHA: ${{ github.sha }}"
+          echo "GITHUB_REF: ${{ github.ref }}"
+          echo "GITHUB_REF_NAME: ${{ github.ref_name }}"
+
+      # Reference the version with ${{ steps.extract_version.outputs.version }}
+      - name: 🏷️ Extract version from tag
+        id: extract_version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          Write-Host "GITHUB_REF: $env:GITHUB_REF"
+          $version = $env:GITHUB_REF -replace '^refs/tags/v', ''
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: 🧾 Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Reference the branch with ${{ steps.tag_branches.outputs.active_branch }}
+      - name: 🏷️ Find branch(es) containing tag commit
+        id: tag_branches
+        shell: bash
+        run: |
+          TAG_COMMIT=$(git rev-list -n 1 "$GITHUB_REF")
+          # List all remote branches containing this commit, strip 'origin/' prefix
+          # Trim leading/trailing spaces from each branch name
+          BRANCHES=$(git branch -r --contains "$TAG_COMMIT" | sed 's|origin/||' | sed 's/^[ \t]*//;s/[ \t]*$//' | tr '\n' ',' | sed 's/,$//')
+          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
+          # Get the first branch (for single-branch logic), also trimmed
+          ACTIVE_BRANCH=$(echo "$BRANCHES" | cut -d',' -f1 | sed 's/^[ \t]*//;s/[ \t]*$//')
+          echo "active_branch=$ACTIVE_BRANCH" >> $GITHUB_OUTPUT
+          echo "TAG_COMMIT=$TAG_COMMIT"
+          echo "BRANCHES=$BRANCHES"
+          echo "ACTIVE_BRANCH=$ACTIVE_BRANCH"
+
+      - name: 🛠️ Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+          dotnet-quality: ga
+
+      # Work around https://github.com/actions/setup-dotnet/issues/155
+      - name: 🧹 Clean solution and NuGet
+        run: |
+          dotnet clean --configuration ${{env.BUILD_CONFIGURATION}} --runtime win-x64
+          dotnet nuget locals all --clear
+
+      - name: 🏗 Build application
+        run: |
+          dotnet build ${{env.PROJECT_APP_FILE_PATH}} --nologo --self-contained --configuration ${{env.BUILD_CONFIGURATION}} --runtime win-x64
+
+      # Publish to sibling `release` folder for github-tag-action step.
+      - name: 📁 Publish app to release folder
+        run: |
+          # Build single-file deployment
+          dotnet publish ${{env.PROJECT_APP_FILE_PATH}} --property:PublishProfile=FolderProfile --output ./release/
+
+      - name: 📂 Copy extra files to release folder
+        run: |
+          Copy-Item -Path LICENSE -Destination ./release/
+
+      # https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test
+      # verbosity detailed
+      - name: 💯 Run unit tests
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "./publish" -Force
+          Copy-Item -Path "./release/TouchMax.exe" -Destination "./publish/" -Force
+          if (-not (Test-Path $env:PROJECT_TESTS_FILE_PATH))
+          {
+              Write-Error "Test script not found: $env:PROJECT_TESTS_FILE_PATH"
+              exit 1
+          }
+          & ".\$env:PROJECT_TESTS_FILE_PATH"
+
+      # Upload release artifact to share with next job
+      # https://docs.github.com/en/actions/guides/storing-workflow-data-as-artifacts#about-workflow-artifacts
+      # https://github.com/marketplace/actions/upload-a-build-artifact
+      - name: 📤 Upload deployment folder as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_PACKAGE}}
+          path: ./release/
+          retention-days: 1
+        # Use always() to always run this step even when there are failures
+        #if: ${{ always() }}
+
+  #
+  # Production release must be on 'main' and the tag must begin with 'v'.
+  # If a release already exists, do not create the release.
+  #
+  # Manual dispatch must build but must not create a release.
+  #
+  # NORMAL -- make a bunch of commits and then push:
+  # If this is a push without a version tag, build but do not create a release.
+  #
+  # TEST -- on a different branch, such as "yaml," create a tag and then push it:
+  # If this is a push elsewhere with a v1.2.3 tag, create a DRAFT release for GitHub.
+  #
+  # RELEASE -- create tag and push it:
+  # If this is a push on `main` of a v1.2.3 tag, create a PRODUCTION release for GitHub.
+  #
+  # •	Manual dispatch: Only the build job runs, no release is created.
+  # •	Normal push (no tag): Only the build job runs, no release is created.
+  # •	Tag push on other branch: Both build and release jobs run, draft release.
+  # •	Tag push on main: Both build and release jobs run, production release.
+  #
+  # | Scenario        | Build | Release Job Runs | Release Type | Notes               |
+  # |-----------------|-------|------------------|--------------|---------------------|
+  # | Normal (no tag) | Yes   | No               | N/A          | Only build          |
+  # | Manual dispatch | Yes   | No               | N/A          | Only build          |
+  # | Test (other br) | Yes   | Yes              | Draft        | Tag on other branch |
+  # | Release (main)  | Yes   | Yes              | Production   | Tag on main         |
+  #
+  release:
+    name: 🚀 Create release for GitHub Releases
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 🧾 Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Download publish artifact from previous job
+      # https://github.com/marketplace/actions/download-a-build-artifact
+      - name: 📥 Download deployment folder as a build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.ARTIFACT_PACKAGE}}
+          path: ./release/
+
+      - name: 🗒️ List folder
+        run: ls -la ./release/
+
+      - name: 📦 Zip Release folder
+        working-directory: ./release
+        run: |
+          zip ../${{env.ARTIFACT_NAME}}.zip *
+
+      - name: 🏷️ Get latest tag and short SHA
+        id: tag_sha
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          short_sha=$(git rev-parse --short HEAD)
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
+
+      # Determine the version/tag for the release
+      # https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
+      - name: 🏷️ Get version tag and release name
+        id: get_version
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/main" && "${GITHUB_REF_TYPE}" == "branch" ]]; then
+            # On main branch, use the latest tag if available
+            tag="${{ steps.tag_sha.outputs.latest_tag }}"
+            # -n : non-empty, -z : unset or empty
+            if [[ -n "$tag" ]]; then
+              name="${tag#v}"
+            else
+              name="${{ steps.tag_sha.outputs.short_sha }}"
+            fi
+          elif [[ "${GITHUB_REF}" == "refs/tags/v"* ]]; then
+            # On a version tag, use the tag
+            tag="${GITHUB_REF##*/}"
+            name="${tag#v}"
+          elif [[ -n "${{ steps.tag_sha.outputs.latest_tag }}" ]]; then
+            # Not on main, use latest tag and short SHA
+            tag="${{ steps.tag_sha.outputs.latest_tag }}"
+            name="${tag#v}-${{ steps.tag_sha.outputs.short_sha }}"
+          else
+            # Not on main, use short SHA
+            tag=""
+            name="${{ steps.tag_sha.outputs.short_sha }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "name=$name" >> $GITHUB_OUTPUT
+
+      # If the workflow was inititated by pushing a tag,
+      # we need to know if it is on the 'main' branch.
+      - name: 🧪 Check if tag is on main
+        id: tag_on_main
+        run: |
+          BASE_BRANCH=$(git branch -r --contains $GITHUB_SHA | grep 'main' || true)
+          if [[ -n "$BASE_BRANCH" ]]; then
+            echo "on_main=true" >> $GITHUB_OUTPUT
+          else
+            echo "on_main=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Create a release only if one does not already exist for this tag
+      # https://github.com/marketplace/actions/github-script
+      - name: 🧪 Check if release exists
+        id: check_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.get_version.outputs.tag }}';
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const exists = releases.some(r => r.tag_name === tag);
+            return exists;
+          result-encoding: string
+
+      # https://github.com/marketplace/actions/gh-release
+      - name: 🚀 Create GitHub Release
+        if: steps.check_release.outputs.result != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: ${{ steps.get_version.outputs.name }}
+          generate_release_notes: true
+          files: ${{env.ARTIFACT_NAME}}.zip
+          #
+          make_latest: ${{ startsWith(github.ref, 'refs/tags/v') && (steps.tag_on_main.outputs.on_main == 'true') }}
+          draft: ${{ !(startsWith(github.ref, 'refs/tags/v') && (steps.tag_on_main.outputs.on_main == 'true')) }}
+          #draft: ${{ (github.ref != 'refs/heads/main') || (startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/v')) }}
+          # There is also a `prerelease` property. (Example: if manual start, which implies no v tag)
+          #prerelease: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🗒️ Output release info
+        if: steps.check_release.outputs.result != 'true'
+        run: |
+          echo "Release created for tag: ${{ steps.get_version.outputs.tag }}"
+          echo "Release name: ${{ steps.get_version.outputs.name }}"
+
+  cleanup:
+    name: 🧹 Clean up artifacts
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      # Delete publish artifact so it does not count against storage
+      # https://github.com/marketplace/actions/delete-artifact
+      - name: ❌ Delete build artifact
+        uses: GeekyEggo/delete-artifact@v5
+        with:
+          name: ${{ env.ARTIFACT_PACKAGE }}
+          failOnError: false
