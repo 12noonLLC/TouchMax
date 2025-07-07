@@ -4,12 +4,12 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net7.0-windows</TargetFramework>
     <Version>3.1.0</Version>
-    <Authors>12noon, Stefan K.S. Tucker</Authors>
-    <Company>12noon</Company>
+    <Authors>12noon LLC</Authors>
+    <Company>12noon LLC</Company>
     <Product>TouchMax</Product>
     <PackageId>TouchMax</PackageId>
     <Description>Forgot to set your camera's time to Daylight Saving Time? Change the Creation Time or Modified Time of any files or folders. Use an absolute time or one relative to the file’s creation time, file’s modified time, or current time.</Description>
-    <Copyright>(c) 2006-2023 12noon, Stefan K.S. Tucker</Copyright>
+    <Copyright>(c) 2006-2025 12noon LLC</Copyright>
     <PackageProjectUrl>https://12noon.com</PackageProjectUrl>
     <Nullable>enable</Nullable>
     <SignAssembly>true</SignAssembly>

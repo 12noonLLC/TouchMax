@@ -1,4 +1,4 @@
-# TouchMax by [12noon.com](https://12noon.com)
+# TouchMax by [12noon LLC](https://12noon.com)
 
 [![.NET](https://github.com/skst/TouchMax/actions/workflows/dotnet.yml/badge.svg)](https://github.com/skst/TouchMax/actions/workflows/dotnet.yml)
 

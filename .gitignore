@@ -20,3 +20,6 @@ Thumbs.db
 #
 #	Added by SourceTree
 #
+test/
+Directory.Build.props
+Properties/launchSettings.json
