@@ -1,6 +1,6 @@
 # TouchMax by [12noon LLC](https://12noon.com)
 
-[![.NET](https://github.com/12noonLLC/TouchMax/actions/workflows/build.yml/badge.svg)](https://github.com/12noonLLC/TouchMax/actions/workflows/build.yml)
+[![Build](https://github.com/12noonLLC/TouchMax/actions/workflows/build.yml/badge.svg)](https://github.com/12noonLLC/TouchMax/actions/workflows/build.yml)
 
 Did you forget to set your camera's time to Daylight Saving Time? TouchMax can
 fix it as well of many other issues you might encounter with the creation
