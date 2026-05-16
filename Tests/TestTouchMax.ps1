@@ -4,7 +4,6 @@
 
 Set-PSDebug -Strict
 
-
 #
 #   Perform a single test.
 #   If a passed "expected" date/time object is $Null, there should be no change.
@@ -40,14 +39,12 @@ function TestRun(
 	#
 	#	Perform the TouchMax operation
 	#
-#	.\publish\TouchMax.exe
-#	.\bin\Release\net6.0\TouchMax.exe
-#	.\bin\Debug\net6.0\TouchMax.exe
-	if (-not(Test-Path '.\publish\TouchMax.exe'))
+	$exists = [bool](Get-Command TouchMax.exe -ErrorAction SilentlyContinue)
+	if (!$exists)
 	{
 		throw 'Executable does not exist.'
 	}
-	.\publish\TouchMax.exe $argsOperation.Split() $fn
+	TouchMax.exe $argsOperation.Split() $fn
 
 	#
 	#	Test the expected timestamps
@@ -152,5 +149,5 @@ TestRun "Set Modified to Now -4 years, +3 days, -26 minutes" $dtCreation $dtModi
 
 
 #TestRun $dtCreation $dtModified "/setfiles /setmodified /Y= /M= /D= /h= /m=" $dtExpectedCreation $dtExpectedModified
-#	.\bin\Debug\net5.0\TouchMax.exe /setfiles /setcreation ("/Y={0}" -f $dtExpectedCreation.Year) ("/M={0}" -f $dtExpectedCreation.Month) ("/D={0}" -f $dtExpectedCreation.Day) ("/h={0}" -f $dtExpectedCreation.Hour) ("/m={0}" -f $dtExpectedCreation.Minute) $fn
+#	TouchMax.exe /setfiles /setcreation ("/Y={0}" -f $dtExpectedCreation.Year) ("/M={0}" -f $dtExpectedCreation.Month) ("/D={0}" -f $dtExpectedCreation.Day) ("/h={0}" -f $dtExpectedCreation.Hour) ("/m={0}" -f $dtExpectedCreation.Minute) $fn
 #"/setfiles /setmodified /Y=2006 /M=4 /D=30 /h=15 /m=9"

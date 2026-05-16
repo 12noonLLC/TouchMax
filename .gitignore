@@ -1,25 +1,5 @@
-desktop.ini
-Thumbs.db
+TouchMax 12noon website.pdf 
 
-**/.vs/
-**/Win32/
-**/x64/
-**/x86/
-**/amd64/
-**/ipch/
-**/Debug/
-**/Debug Console/
-**/Release/
-**/Release Console/
-**/obj/
-**/bin/
-**/AppPackages/
-**/TestResults/
-**/Generated Files/
-
-#
-#	Added by SourceTree
-#
-test/
-Directory.Build.props
-Properties/launchSettings.json
+Tests/*
+!Tests/
+!Tests/*.ps1

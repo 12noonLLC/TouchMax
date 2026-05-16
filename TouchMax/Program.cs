@@ -1,17 +1,35 @@
 ﻿using System;
+using System.CommandLine;
+using System.CommandLine.Help;
+using System.CommandLine.Invocation;
 using System.IO;
 using System.Linq;
 
 namespace TouchMax;
 
-/*
-	* Usage:
-	*		TouchMax +/-HH:MM <file specification>
-	*
-	* Pass a file path (with optional wildcards) and the offset to use to
-	* change the file's last-modified time.
-	*/
-class Program
+internal class CustomHelpAction(HelpAction _defaultAction) : SynchronousCommandLineAction
+{
+	public override int Invoke(ParseResult parseResult)
+	{
+		parseResult.InvocationConfiguration.Output.Write("header");
+
+		int result = _defaultAction.Invoke(parseResult);
+
+		//parseResult.InvocationConfiguration.Output.WriteLine("FOOTER");
+
+		return result;
+
+	}
+}
+
+/// <summary>
+/// Pass a file path (with optional wildcards) and the offset to use to
+/// change the file's last-modified time.
+/// </summary>
+/// <example>
+/// TouchMax.exe +/-HH:MM <file specification>
+/// </example>
+public class Program
 {
 	private bool _bTest = false;
 
@@ -356,7 +374,7 @@ class Program
 		{
 			try
 			{
-				if (a.StartsWith("-") || a.StartsWith("/"))
+				if (a.StartsWith('-') || a.StartsWith('/'))
 				{
 					string key = a[1..].ToLower();
 					if (key.StartsWith("test"))

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+	<PropertyGroup>
+		<Product>TouchMax</Product>
+		<Description>TouchMax changes the Creation-Time and/or Modified-Time of any files or folders. It can use an absolute time or one relative to the file's creation time, file's modified time, or current time.</Description>
+
+		<Authors>Stefan K.S. Tucker</Authors>
+		<Company>12noon LLC</Company>
+		<Year>$([System.DateTime]::UtcNow.Year)</Year>
+		<Copyright>© 2006-$(Year) 12noon LLC</Copyright>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<VersionPrefix>3.3.0</VersionPrefix>
+		<VersionSuffix Condition="'$(Configuration)' == 'Debug'">debug</VersionSuffix>
+		<!-- `Version` defaults to `VersionPrefix`+`VersionSuffix` -->
+
+		<!-- Windows file properties A.B.C.0 -->
+		<FileVersion>$(VersionPrefix).0</FileVersion>
+
+		<!-- Stable API identity version, usually updated only on breaking changes -->
+		<!-- Only set in individual projects. -->
+		<AssemblyVersion />
+
+		<!-- Used for human-readable version, About, Explorer, crash logs, marketing|build metadata -->
+		<!-- Defaults to `Version`+githash -->
+		<InformationalVersion />
+		<IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
+
+		<!-- Used for packaging (.wapproj) -->
+		<AppxBundleVersion>$(Version)</AppxBundleVersion>
+
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<ArtifactsPath>C:\VSIntermediate\TouchMax\artifacts\</ArtifactsPath>
+		<BaseIntermediateOutputPath>$(ArtifactsPath)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+	</PropertyGroup>
+</Project>
