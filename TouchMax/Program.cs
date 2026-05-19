@@ -11,15 +11,59 @@ internal class CustomHelpAction(HelpAction _defaultAction) : SynchronousCommandL
 {
 	public override int Invoke(ParseResult parseResult)
 	{
-		parseResult.InvocationConfiguration.Output.Write("header");
+		// Output version and copyright information
+		System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+		string? exeName = assembly.GetName().Name;
+		System.Diagnostics.FileVersionInfo versionFile = System.Diagnostics.FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, $"{exeName}.exe"));
 
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine($"{versionFile.CompanyName ?? string.Empty} {versionFile.ProductName ?? string.Empty} {versionFile.ProductVersion ?? string.Empty}");
+		parseResult.InvocationConfiguration.Output.WriteLine($"{versionFile.LegalCopyright ?? string.Empty}");
+		parseResult.InvocationConfiguration.Output.WriteLine("12noon.com");
+		parseResult.InvocationConfiguration.Output.WriteLine();
+
+		// Output default help
 		int result = _defaultAction.Invoke(parseResult);
 
-		//parseResult.InvocationConfiguration.Output.WriteLine("FOOTER");
+		// Output additional examples
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine("PROCESS");
+		parseResult.InvocationConfiguration.Output.WriteLine("These are the steps the app takes to set a file or folder's timestamp:");
+		parseResult.InvocationConfiguration.Output.WriteLine("  1. Set timestamp to now, if specified");
+		parseResult.InvocationConfiguration.Output.WriteLine("  2. Apply absolute values, if any");
+		parseResult.InvocationConfiguration.Output.WriteLine("  3. Apply relative changes, if any");
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine("EXAMPLES");
+		parseResult.InvocationConfiguration.Output.WriteLine("  Set Modified-Time of a file to the current date/time:");
+		parseResult.InvocationConfiguration.Output.WriteLine("    touchmax --set-files --set-modified --base-time now Test.log");
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine("  Forgot to set camera ahead one hour for Daylight Saving Time.");
+		parseResult.InvocationConfiguration.Output.WriteLine("  Set Creation-Time of all JPG files in all folders ahead one hour:");
+		parseResult.InvocationConfiguration.Output.WriteLine("    touchmax --recurse --set-files --set-creation --hour +1 *.jpg");
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine("  Set Modified-Time of text files to a month ago and ten minutes ahead:");
+		parseResult.InvocationConfiguration.Output.WriteLine("    touchmax --set-files --set-modified --base-time now --month -1 --minute +10 *.txt");
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine("  Set Creation-Time to three days before the Modified-Time:");
+		parseResult.InvocationConfiguration.Output.WriteLine("    touchmax --set-files --set-creation --base-time modified --day -3 *.txt");
+		parseResult.InvocationConfiguration.Output.WriteLine();
+		parseResult.InvocationConfiguration.Output.WriteLine("  Set a file's Modified-Time to 15 Sep 2008:");
+		parseResult.InvocationConfiguration.Output.WriteLine("    touchmax --set-files --set-modified --year =2008 --month =9 --day =15 test.txt");
+		parseResult.InvocationConfiguration.Output.WriteLine();
 
 		return result;
-
 	}
+}
+
+/// <summary>
+/// Specifies the base timestamp to use before applying adjustments.
+/// </summary>
+internal enum BaseTimeMode
+{
+	None,
+	Now,
+	Created,
+	Modified
 }
 
 /// <summary>
@@ -31,7 +75,7 @@ internal class CustomHelpAction(HelpAction _defaultAction) : SynchronousCommandL
 /// </example>
 public class Program
 {
-	private bool _bTest = false;
+	private bool _isDryRun = false;
 
 	private string _strDirectory = ".";
 	private string _strPattern = string.Empty;
@@ -46,7 +90,6 @@ public class Program
 	// use these for setting relative components
 	private int _relYears = 0;
 	private int _relMonths = 0;
-	// could combine these three into a TimeSpan, but why break the parallels
 	private int _relDays = 0;
 	private int _relHours = 0;
 	private int _relMinutes = 0;
@@ -68,26 +111,380 @@ public class Program
 	private delegate bool FileInfoHandler(FileInfo dirinfo, string outputPrefix);
 
 
+	/// <summary>
+	/// Parses a date/time adjustment string that must start with +, -, or =.
+	/// </summary>
+	/// <param name="value">The value to parse (e.g., "+1", "-5", "=2023")</param>
+	/// <returns>Tuple of (operation, numericValue) where operation is '+', '-', or '='</returns>
+	/// <exception cref="ArgumentException">Thrown when value doesn't start with +, -, or =</exception>
+	private static (char operation, int numericValue) ParseDateTimeAdjustment(string value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			throw new ArgumentException("Date/time adjustment value cannot be empty.");
+		}
+
+		char operation = value[0];
+		if ((operation != '+') && (operation != '-') && (operation != '='))
+		{
+			throw new ArgumentException($"Date/time adjustment must start with +, -, or = (got: {value})");
+		}
+
+		if (value.Length < 2)
+		{
+			throw new ArgumentException($"Date/time adjustment must include a numeric value after {operation}");
+		}
+
+		string numericPart = value[1..];
+		if (!int.TryParse(numericPart, out int numericValue))
+		{
+			throw new ArgumentException($"Invalid numeric value: {numericPart}");
+		}
+
+		// For '-' operation, negate the value
+		if (operation == '-')
+		{
+			numericValue = -numericValue;
+		}
+
+		return (operation, numericValue);
+	}
+
+	/// <summary>
+	/// Creates a validator for date/time adjustment options that validates the format.
+	/// </summary>
+	/// <param name="option">The option to validate</param>
+	/// <returns>A validation action</returns>
+	private static Action<System.CommandLine.Parsing.SymbolResult> CreateDateTimeAdjustmentValidator(Option<string?> option)
+	{
+		return result =>
+		{
+			string? value = result.GetValue(option);
+			if (value != null)
+			{
+				try
+				{
+					ParseDateTimeAdjustment(value);
+				}
+				catch (ArgumentException ex)
+				{
+					result.AddError(ex.Message);
+				}
+			}
+		};
+	}
+
+
 	static void Main(string[] args)
 	{
-		if (args.Length < 4)
+		// Define all options with correct API
+		Option<bool> setFilesOption = new("--set-files")
 		{
-			//Console.WriteLine("Command line: " + String.Join(";", args));
-			ShowUsage();
-			return;
-		}
+			Description = "Set file timestamps"
+		};
 
-		Program pgm = new();
-		try
+		Option<bool> setFoldersOption = new("--set-folders")
 		{
-			pgm.ParseArguments(args);
-		}
-		catch (Exception)
-		{
-			return;
-		}
+			Description = "Set folder timestamps"
+		};
 
-		pgm.Touch(pgm._strDirectory, pgm._strPattern);
+		Option<bool> setCreationOption = new("--set-creation")
+		{
+			Description = "Change creation time"
+		};
+
+		Option<bool> setModifiedOption = new("--set-modified")
+		{
+			Description = "Change modified time"
+		};
+
+		Option<bool> recurseOption = new("--recurse")
+		{
+			Description = "Process subfolders"
+		};
+
+		Option<bool> dryRunOption = new("--dry-run")
+		{
+			Description = "Display changes without applying them"
+		};
+
+		Option<BaseTimeMode> baseTimeOption = new("--base-time")
+		{
+			Description = "Start with: now, created, or modified",
+			DefaultValueFactory = _ => BaseTimeMode.None
+		};
+
+		Option<string?> yearOption = new("--year")
+		{
+			Description = "Adjust year (+N, -N, =N)"
+		};
+		yearOption.Validators.Add(CreateDateTimeAdjustmentValidator(yearOption));
+
+		Option<string?> monthOption = new("--month")
+		{
+			Description = "Adjust month (+N, -N, =N) [January is 1 ]"
+		};
+		monthOption.Validators.Add(CreateDateTimeAdjustmentValidator(monthOption));
+
+		Option<string?> dayOption = new("--day")
+		{
+			Description = "Adjust day (+N, -N, =N) [ Days are 1-31 ]"
+		};
+		dayOption.Validators.Add(CreateDateTimeAdjustmentValidator(dayOption));
+
+		Option<string?> hourOption = new("--hour")
+		{
+			Description = "Adjust hour (+N, -N, =N)"
+		};
+		hourOption.Validators.Add(CreateDateTimeAdjustmentValidator(hourOption));
+
+		Option<string?> minuteOption = new("--minute")
+		{
+			Description = "Adjust minute (+N, -N, =N)"
+		};
+		minuteOption.Validators.Add(CreateDateTimeAdjustmentValidator(minuteOption));
+
+		// Define the pattern argument
+		Argument<string> patternArgument = new("pattern")
+		{
+			Description = "File pattern (e.g., *.jpg, test.txt)"
+		};
+
+		// Create root command and add options/arguments
+		RootCommand rootCommand = new("TouchMax changes the Creation-Time and/or Modified-Time of files or folders.");
+		rootCommand.Options.Add(setFilesOption);
+		rootCommand.Options.Add(setFoldersOption);
+		rootCommand.Options.Add(setCreationOption);
+		rootCommand.Options.Add(setModifiedOption);
+		rootCommand.Options.Add(recurseOption);
+		rootCommand.Options.Add(dryRunOption);
+		rootCommand.Options.Add(baseTimeOption);
+		rootCommand.Options.Add(yearOption);
+		rootCommand.Options.Add(monthOption);
+		rootCommand.Options.Add(dayOption);
+		rootCommand.Options.Add(hourOption);
+		rootCommand.Options.Add(minuteOption);
+		rootCommand.Arguments.Add(patternArgument);
+
+		// Add root-level validators
+		rootCommand.Validators.Add(result =>
+		{
+			bool setFiles = result.GetValue(setFilesOption);
+			bool setFolders = result.GetValue(setFoldersOption);
+			if (!setFiles && !setFolders)
+			{
+				result.AddError("You must specify at least one of --set-files or --set-folders.");
+			}
+		});
+
+		rootCommand.Validators.Add(result =>
+		{
+			bool setCreation = result.GetValue(setCreationOption);
+			bool setModified = result.GetValue(setModifiedOption);
+			if (!setCreation && !setModified)
+			{
+				result.AddError("You must specify at least one of --set-creation or --set-modified.");
+			}
+		});
+
+		// Set the action
+		rootCommand.SetAction(parseResult =>
+		{
+			bool setFiles = parseResult.GetValue(setFilesOption);
+			bool setFolders = parseResult.GetValue(setFoldersOption);
+			bool setCreation = parseResult.GetValue(setCreationOption);
+			bool setModified = parseResult.GetValue(setModifiedOption);
+			bool recurse = parseResult.GetValue(recurseOption);
+			bool dryRun = parseResult.GetValue(dryRunOption);
+			BaseTimeMode baseTime = parseResult.GetValue(baseTimeOption);
+			string? year = parseResult.GetValue(yearOption);
+			string? month = parseResult.GetValue(monthOption);
+			string? day = parseResult.GetValue(dayOption);
+			string? hour = parseResult.GetValue(hourOption);
+			string? minute = parseResult.GetValue(minuteOption);
+			string? pattern = parseResult.GetValue(patternArgument);
+
+			// Create and configure program instance
+			Program pgm = new();
+			try
+			{
+				pgm._bSetFiles = setFiles;
+				pgm._bSetFolders = setFolders;
+				pgm._bSetCreation = setCreation;
+				pgm._bSetModified = setModified;
+				pgm._bRecurse = recurse;
+				pgm._isDryRun = dryRun;
+
+				// Set base time mode
+				pgm._bUseNow = (baseTime == BaseTimeMode.Now);
+				pgm._bUseCreation = (baseTime == BaseTimeMode.Created);
+				pgm._bUseModified = (baseTime == BaseTimeMode.Modified);
+
+				// Parse date/time adjustments
+				if (year != null)
+				{
+					var (op, value) = ParseDateTimeAdjustment(year);
+					if (op == '=')
+					{
+						pgm._absYear = value;
+					}
+					else
+					{
+						pgm._relYears = value;
+					}
+				}
+
+				if (month != null)
+				{
+					var (op, value) = ParseDateTimeAdjustment(month);
+					if (op == '=')
+					{
+						pgm._absMonth = value;
+					}
+					else
+					{
+						pgm._relMonths = value;
+					}
+				}
+
+				if (day != null)
+				{
+					var (op, value) = ParseDateTimeAdjustment(day);
+					if (op == '=')
+					{
+						pgm._absDate = value;
+					}
+					else
+					{
+						pgm._relDays = value;
+					}
+				}
+
+				if (hour != null)
+				{
+					var (op, value) = ParseDateTimeAdjustment(hour);
+					if (op == '=')
+					{
+						pgm._absHour = value;
+					}
+					else
+					{
+						pgm._relHours = value;
+					}
+				}
+
+				if (minute != null)
+				{
+					var (op, value) = ParseDateTimeAdjustment(minute);
+					if (op == '=')
+					{
+						pgm._absMinute = value;
+					}
+					else
+					{
+						pgm._relMinutes = value;
+					}
+				}
+
+				// Parse pattern and directory
+				if (!string.IsNullOrEmpty(pattern))
+				{
+					pgm._strPattern = Path.GetFileName(pattern);
+
+					pgm._strDirectory = Path.GetDirectoryName(pattern) ?? ".";
+					if (string.IsNullOrEmpty(pgm._strDirectory))
+					{
+						pgm._strDirectory = ".";
+					}
+				}
+
+				// Display test mode info if requested
+				if (pgm._isDryRun)
+				{
+					Console.WriteLine();
+					Console.WriteLine("** DRY RUN MODE **");
+					Console.WriteLine("Recurse? " + (pgm._bRecurse ? "YES" : "NO"));
+					Console.WriteLine("Set files? " + (pgm._bSetFiles ? "YES" : "NO"));
+					Console.WriteLine("Set folders? " + (pgm._bSetFolders ? "YES" : "NO"));
+					Console.WriteLine("Now: " + pgm._dtNow.ToString());
+					Console.WriteLine("Base: Use " + (pgm._bUseNow ? "NOW" : pgm._bUseCreation ? "CREATION" : "MODIFIED"));
+
+					if ((pgm._absYear is not null) || (pgm._absMonth is not null) || (pgm._absDate is not null) || (pgm._absHour is not null) || (pgm._absMinute is not null))
+					{
+						Console.WriteLine("Absolute:");
+						if (pgm._absYear.HasValue)
+						{
+							Console.WriteLine("  year = " + pgm._absYear);
+						}
+
+						if (pgm._absMonth.HasValue)
+						{
+							Console.WriteLine("  month = " + pgm._absMonth);
+						}
+
+						if (pgm._absDate.HasValue)
+						{
+							Console.WriteLine("  date = " + pgm._absDate);
+						}
+
+						if (pgm._absHour.HasValue)
+						{
+							Console.WriteLine("  hour = " + pgm._absHour);
+						}
+
+						if (pgm._absMinute.HasValue)
+						{
+							Console.WriteLine("  minute = " + pgm._absMinute);
+						}
+					}
+
+					if ((pgm._relYears != 0) || (pgm._relMonths != 0) || (pgm._relDays != 0) || (pgm._relHours != 0) || (pgm._relMinutes != 0))
+					{
+						Console.WriteLine("Relative:");
+						if (pgm._relYears != 0)
+						{
+							Console.WriteLine("  years = " + pgm._relYears);
+						}
+
+						if (pgm._relMonths != 0)
+						{
+							Console.WriteLine("  months = " + pgm._relMonths);
+						}
+
+						if (pgm._relDays != 0)
+						{
+							Console.WriteLine("  days = " + pgm._relDays);
+						}
+
+						if (pgm._relHours != 0)
+						{
+							Console.WriteLine("  hour = " + pgm._relHours);
+						}
+
+						if (pgm._relMinutes != 0)
+						{
+							Console.WriteLine("  minute = " + pgm._relMinutes);
+						}
+					}
+
+					Console.WriteLine("Directory: " + pgm._strDirectory);
+					Console.WriteLine("Pattern: " + pgm._strPattern);
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("Error: " + ex.Message);
+				return 1;
+			}
+
+			// Execute the touch operation
+			pgm.Touch(pgm._strDirectory, pgm._strPattern);
+			return 0;
+		});
+
+		// Parse and invoke
+		ParseResult parseResult = rootCommand.Parse(args);
+		Environment.Exit(parseResult.Invoke());
 	}
 
 
@@ -129,7 +526,7 @@ public class Program
 
 		Console.WriteLine();
 
-		string strIndent = string.Empty.PadLeft(nLevel, '\t');
+		string strIndent = string.Empty.PadLeft(nLevel * 2, ' ');
 		Console.WriteLine(strIndent + dir.FullName + Path.AltDirectorySeparatorChar);
 
 		/*
@@ -203,7 +600,7 @@ public class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtCreation, dtCreation, dtModified);
 
-			if (_bTest)
+			if (_isDryRun)
 			{
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), dtNew.ToString());
 			}
@@ -226,7 +623,7 @@ public class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtModified, dtCreation, dtModified);
 
-			if (_bTest)
+			if (_isDryRun)
 			{
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), dtNew.ToString());
 			}
@@ -258,7 +655,7 @@ public class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtCreation, dtCreation, dtModified);
 
-			if (_bTest)
+			if (_isDryRun)
 			{
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtCreation.ToString(), dtNew.ToString());
 			}
@@ -281,7 +678,7 @@ public class Program
 		{
 			DateTime dtNew = DetermineNewDateTime(dtModified, dtCreation, dtModified);
 
-			if (_bTest)
+			if (_isDryRun)
 			{
 				Console.WriteLine("{0}{1} => {2}", outputPrefix, dtModified.ToString(), dtNew.ToString());
 			}
@@ -365,292 +762,5 @@ public class Program
 		dtNew = dtNew.AddMinutes(_relMinutes);
 
 		return dtNew;
-	}
-
-
-	private void ParseArguments(string[] args)
-	{
-		foreach (string a in args)
-		{
-			try
-			{
-				if (a.StartsWith('-') || a.StartsWith('/'))
-				{
-					string key = a[1..].ToLower();
-					if (key.StartsWith("test"))
-					{
-						_bTest = true;
-						continue;
-					}
-					else if (key.StartsWith("recurse"))
-					{
-						_bRecurse = true;
-						continue;
-					}
-					else if (key.StartsWith("setfiles"))
-					{
-						_bSetFiles = true;
-						continue;
-					}
-					else if (key.StartsWith("setfolders"))
-					{
-						_bSetFolders = true;
-						continue;
-					}
-					else if (key.StartsWith("setcreation"))
-					{
-						_bSetCreation = true;
-						continue;
-					}
-					else if (key.StartsWith("setmodified"))
-					{
-						_bSetModified = true;
-						continue;
-					}
-					else if (key.StartsWith("usenow"))
-					{
-						_bUseNow = true;
-						continue;
-					}
-					else if (key.StartsWith("usecreation"))
-					{
-						_bUseCreation = true;
-						continue;
-					}
-					else if (key.StartsWith("usemodified"))
-					{
-						_bUseModified = true;
-						continue;
-					}
-
-					switch (a[1])
-					{
-						case 'Y':
-						{
-							int n = ParseArgumentNumber(a);
-							if (a[2] == '=')
-							{
-								_absYear = n;
-							}
-							else
-							{
-								_relYears = n;
-							}
-							break;
-						}
-						case 'M':
-						{
-							int n = ParseArgumentNumber(a);
-							if (a[2] == '=')
-							{
-								_absMonth = n;
-							}
-							else
-							{
-								_relMonths = n;
-							}
-							break;
-						}
-						case 'D':
-						{
-							int n = ParseArgumentNumber(a);
-							if (a[2] == '=')
-							{
-								_absDate = n;
-							}
-							else
-							{
-								_relDays = n;
-							}
-							break;
-						}
-
-						case 'h':
-						{
-							int n = ParseArgumentNumber(a);
-							if (a[2] == '=')
-							{
-								_absHour = n;
-							}
-							else
-							{
-								_relHours = n;
-							}
-							break;
-						}
-						case 'm':
-						{
-							int n = ParseArgumentNumber(a);
-							if (a[2] == '=')
-							{
-								_absMinute = n;
-							}
-							else
-							{
-								_relMinutes = n;
-							}
-							break;
-						}
-
-						default:
-							Console.WriteLine($"Unrecognized switch: {a}");
-							throw new ArgumentException("Unrecognized switch", a);
-					}
-
-					continue;
-				}
-
-				// maybe it's the pattern
-				if (string.IsNullOrEmpty(_strPattern))
-				{
-					_strPattern = a;
-					/*
-					 * The user may have specified a path (absolute or relative) and
-					 * we need to split them up.
-					 */
-					_strDirectory = Path.GetDirectoryName(_strPattern) ?? ".";
-					_strPattern = Path.GetFileName(_strPattern);
-					if (string.IsNullOrEmpty(_strDirectory))
-					{
-						_strDirectory = ".";
-					}
-				}
-				else
-				{
-					Console.WriteLine($"Too many arguments: {a}");
-				}
-			}
-			catch (ArgumentOutOfRangeException /*ex*/)
-			{
-				Console.WriteLine($"Invalid argument value: {a}");
-				throw;
-			}
-		}
-
-		if (_bTest)
-		{
-			Console.WriteLine();
-			Console.WriteLine("** TEST MODE **");
-			Console.WriteLine("Recurse? " + (_bRecurse ? "YES" : "NO"));
-			Console.WriteLine("Set files? " + (_bSetFiles ? "YES" : "NO"));
-			Console.WriteLine("Set folders? " + (_bSetFolders ? "YES" : "NO"));
-			Console.WriteLine("Now: " + _dtNow.ToString());
-			Console.WriteLine("Base: Use " + (_bUseNow ? "NOW" : _bUseCreation ? "CREATION" : "MODIFIED"));
-			if ((_absYear is not null) || (_absMonth is not null) || (_absDate is not null) || (_absHour is not null) || (_absMinute is not null))
-			{
-				Console.WriteLine("Absolute:");
-				if (_absYear.HasValue)
-					Console.WriteLine("\tyear = " + _absYear);
-				if (_absMonth.HasValue)
-					Console.WriteLine("\tmonth = " + _absMonth);
-				if (_absDate.HasValue)
-					Console.WriteLine("\tdate = " + _absDate);
-				if (_absHour.HasValue)
-					Console.WriteLine("\thour = " + _absHour);
-				if (_absMinute.HasValue)
-					Console.WriteLine("\tminute = " + _absMinute);
-			}
-			if ((_relYears != 0) || (_relMonths != 0) || (_relDays != 0) || (_relHours != 0) || (_relMinutes != 0))
-			{
-				Console.WriteLine("Relative:");
-				if (_relYears != 0)
-					Console.WriteLine("\tyears = " + _relYears);
-				if (_relMonths != 0)
-					Console.WriteLine("\tmonths = " + _relMonths);
-				if (_relDays != 0)
-					Console.WriteLine("\tdays = " + _relDays);
-				if (_relHours != 0)
-					Console.WriteLine("\thour = " + _relHours);
-				if (_relMinutes != 0)
-						Console.WriteLine("\tminute = " + _relMinutes);
-			}
-			Console.WriteLine("Directory: " + _strDirectory);
-			Console.WriteLine("Pattern: " + _strPattern);
-		}
-
-		if (!_bSetFiles && !_bSetFolders)
-		{
-			Console.WriteLine("You must set file or folder timestamps.");
-			Environment.Exit(-1);
-		}
-
-		if (!_bSetCreation && !_bSetModified)
-		{
-			Console.WriteLine("You must set creation or modified timestamp.");
-			Environment.Exit(-1);
-		}
-
-		static int ParseArgumentNumber(string s)
-		{
-			try
-			{
-				// + or - or =
-				switch (s[2])
-				{
-					case '-': return -short.Parse(s[3..]);
-					case '+': return short.Parse(s[3..]);
-					case '=': return short.Parse(s[3..]);
-					default:
-						Console.WriteLine($"Must use +, -, or = after switch {s}");
-						break;
-				}
-			}
-			catch (FormatException ex)
-			{
-				Console.WriteLine(ex.Message);
-				throw;
-			}
-			return 0;
-		}
-	}
-
-
-	static void ShowUsage()
-	{
-		System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-		var exeName = assembly.GetName().Name;
-		/// assembly.Location is empty for single-file package, so we use this.
-		System.Diagnostics.FileVersionInfo versionFile = System.Diagnostics.FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, $"{exeName}.exe"));
-
-		Console.WriteLine();
-		Console.WriteLine("{0} {1} {2}", versionFile.CompanyName ?? string.Empty, versionFile.ProductName ?? string.Empty, versionFile.ProductVersion ?? string.Empty);
-		Console.WriteLine("{0}", versionFile.LegalCopyright ?? string.Empty);
-		Console.WriteLine("12noon.com");
-		Console.WriteLine();
-		Console.WriteLine("USAGE");
-		Console.WriteLine("   [/test] [/setfiles] [/setfolders] [/recurse] [/setcreation] [/setmodified] [/usenow|/usecreation|/usemodified]");
-		Console.WriteLine("   [/Y+|-|=#] [/M+|-|=#] [/D+|-|=#] [/h+|-|=#] [/m+|-|=#] <pattern>");
-		Console.WriteLine("\t/setfiles: set file timestamps");
-		Console.WriteLine("\t/setfolders: set folder timestamps");
-		Console.WriteLine("\t/recurse: process subfolders");
-		Console.WriteLine("\t/setcreation: change creation time");
-		Console.WriteLine("\t/setmodified: change modified time");
-		Console.WriteLine("\t/usenow: set timestamp to current time first");
-		Console.WriteLine("\t/usecreation: set timestamp to file's creation time first");
-		Console.WriteLine("\t/usemodified: set timestamp to file's modified time first");
-		Console.WriteLine("\t/Y - year, /M - month, /D - date, /h - hour, /m - minute");
-		Console.WriteLine("\t\t(January is 1, etc. Dates are 1-31.)");
-		Console.WriteLine("\t\t+ increments the current value by the specified amount");
-		Console.WriteLine("\t\t- decrements the current value by the specified amount");
-		Console.WriteLine("\t\t= sets to the specified value");
-		Console.WriteLine();
-		Console.WriteLine("PROCESS");
-		Console.WriteLine("These are the steps it takes to set a file or folder's timestamp:");
-		Console.WriteLine("\t1. Set timestamp to now, if specified");
-		Console.WriteLine("\t2. Apply absolute values, if any");
-		Console.WriteLine("\t3. Apply relative changes, if any");
-		Console.WriteLine();
-		Console.WriteLine("EXAMPLES");
-		Console.WriteLine("Forgot to set camera ahead one hour for Daylight Saving Time. Set Creation-Time of all JPG files in all folders ahead one hour:");
-		Console.WriteLine("\ttouchmax.exe /recurse /setfiles /setcreation /h+1 *.jpg");
-		Console.WriteLine();
-		Console.WriteLine("Set Modified-Time of text files to a month ago and ten minutes ahead:");
-		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usenow /M-1 /m+10 *.txt");
-		Console.WriteLine();
-		Console.WriteLine("Set Creation-Time to three days before the ModifiedTime:");
-		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usemodified /D-3 *.txt");
-		Console.WriteLine();
-		Console.WriteLine("Set a file's Modified-Time to 15 Sep 2008:");
-		Console.WriteLine("\ttouchmax.exe /setfiles /setmodified /usemodified /Y=2008 /M=9 /D=15 test.txt");
 	}
 }

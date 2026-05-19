@@ -87,7 +87,7 @@ function TestRun(
 #
 $dtCreation = New-Object -typename System.DateTime(2001, 12, 1, 3, 15, 0)
 $dtModified = New-Object -typename System.DateTime(2003, 6, 8, 11, 58, 0)
-$argsOperation = "/setfiles /setcreation /Y=2005 /M=8 /D=12 /h=8 /m=42"
+$argsOperation = "--set-files --set-creation --year =2005 --month =8 --day =12 --hour =8 --minute =42"
 $dtExpectedCreation = New-Object -typename System.DateTime(2005, 8, 12, 8, 42, 0)
 TestRun "Set Creation exactly" $dtCreation $dtModified $argsOperation $dtExpectedCreation $Null
 
@@ -96,7 +96,7 @@ TestRun "Set Creation exactly" $dtCreation $dtModified $argsOperation $dtExpecte
 #
 $dtCreation = New-Object -typename System.DateTime(2001, 12, 1, 3, 15, 0)
 $dtModified = New-Object -typename System.DateTime(2003, 6, 8, 11, 58, 0)
-$argsOperation = "/setfiles /setmodified /Y=2006 /M=4 /D=30 /h=15 /m=9"
+$argsOperation = "--set-files --set-modified --year =2006 --month =4 --day =30 --hour =15 --minute =9"
 $dtExpectedModified = New-Object -typename System.DateTime(2006, 4, 30, 15, 9, 0)
 TestRun "Set Modified exactly" $dtCreation $dtModified $argsOperation $Null $dtExpectedModified
 
@@ -106,7 +106,7 @@ TestRun "Set Modified exactly" $dtCreation $dtModified $argsOperation $Null $dtE
 #
 $dtCreation = New-Object -typename System.DateTime(2001, 12, 1, 3, 15, 0)
 $dtModified = New-Object -typename System.DateTime(2003, 6, 8, 11, 58, 0)
-$argsOperation = "/setfiles /setcreation /usemodified /M-2"
+$argsOperation = "--set-files --set-creation --base-time modified --month -2"
 $dtExpectedCreation = $dtModified.AddMonths(-2)
 TestRun "Set Creation to Modified -2 months" $dtCreation $dtModified $argsOperation $dtExpectedCreation $Null
 
@@ -115,7 +115,7 @@ TestRun "Set Creation to Modified -2 months" $dtCreation $dtModified $argsOperat
 #
 $dtCreation = New-Object -typename System.DateTime(2001, 12, 1, 3, 15, 0)
 $dtModified = New-Object -typename System.DateTime(2003, 6, 8, 11, 58, 0)
-$argsOperation = "/setfiles /setmodified /usecreation /D+1"
+$argsOperation = "--set-files --set-modified --base-time created --day +1"
 $dtExpectedModified = $dtCreation.AddDays(1)
 TestRun "Set Modified to Creation +1 day" $dtCreation $dtModified $argsOperation $Null $dtExpectedModified
 
@@ -126,7 +126,7 @@ TestRun "Set Modified to Creation +1 day" $dtCreation $dtModified $argsOperation
 $dtNow = Get-Date
 $dtCreation = New-Object -typename System.DateTime(2001, 12, 1, 3, 15, 0)
 $dtModified = New-Object -typename System.DateTime(2003, 6, 8, 11, 58, 0)
-$argsOperation = "/setfiles /setcreation /usenow /Y-6 /M+4 /h-7"
+$argsOperation = "--set-files --set-creation --base-time now --year -6 --month +4 --hour -7"
 $dtExpectedCreation = $dtNow
 $dtExpectedCreation = $dtExpectedCreation.AddYears(-6)
 $dtExpectedCreation = $dtExpectedCreation.AddMonths(4)
@@ -138,7 +138,7 @@ TestRun "Set Creation to Now -6 years, +4 months, -7 hours" $dtCreation $dtModif
 #
 $dtCreation = New-Object -typename System.DateTime(2001, 12, 1, 3, 15, 0)
 $dtModified = New-Object -typename System.DateTime(2003, 6, 8, 11, 58, 0)
-$argsOperation = "/setfiles /setmodified /usenow /Y-4 /D+3 /m-26"
+$argsOperation = "--set-files --set-modified --base-time now --year -4 --day +3 --minute -26"
 $dtExpectedModified = $dtNow
 $dtExpectedModified = $dtExpectedModified.AddYears(-4)
 $dtExpectedModified = $dtExpectedModified.AddDays(3)

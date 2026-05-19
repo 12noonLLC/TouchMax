@@ -6,6 +6,8 @@
     <File Path=".github/workflows/build.yml" />
     <File Path="devtools/BuildMsStore.cmd" />
     <File Path="Directory.Build.props" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
     <File Path="Tests/TestTouchMax.ps1" />
   </Folder>
   <Project Path="TouchMax/TouchMax.csproj">

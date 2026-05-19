@@ -11,7 +11,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<VersionPrefix>3.3.0</VersionPrefix>
+		<VersionPrefix>3.3.1</VersionPrefix>
 		<VersionSuffix Condition="'$(Configuration)' == 'Debug'">debug</VersionSuffix>
 		<!-- `Version` defaults to `VersionPrefix`+`VersionSuffix` -->
 
