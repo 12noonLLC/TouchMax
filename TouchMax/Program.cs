@@ -9,17 +9,33 @@ namespace TouchMax;
 
 internal class CustomHelpAction(HelpAction _defaultAction) : SynchronousCommandLineAction
 {
+	/// <summary>
+	/// Replace default help action with custom one to include
+	/// version and copyright information and additional examples.
+	/// </summary>
+	/// <param name="root"></param>
+	internal static void AttachCustomHelp(RootCommand root)
+	{
+		foreach (Option option in root.Options)
+		{
+			if (option is HelpOption helpOption)
+			{
+				helpOption.Action = new CustomHelpAction((HelpAction)helpOption.Action!);
+				break;
+			}
+		}
+	}
+
 	public override int Invoke(ParseResult parseResult)
 	{
 		// Output version and copyright information
-		System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-		string? exeName = assembly.GetName().Name;
-		System.Diagnostics.FileVersionInfo versionFile = System.Diagnostics.FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, $"{exeName}.exe"));
+		Shared.ApplicationInformation appInfo = new();
+		string v = appInfo.VersionShort;
 
 		parseResult.InvocationConfiguration.Output.WriteLine();
-		parseResult.InvocationConfiguration.Output.WriteLine($"{versionFile.CompanyName ?? string.Empty} {versionFile.ProductName ?? string.Empty} {versionFile.ProductVersion ?? string.Empty}");
-		parseResult.InvocationConfiguration.Output.WriteLine($"{versionFile.LegalCopyright ?? string.Empty}");
-		parseResult.InvocationConfiguration.Output.WriteLine("12noon.com");
+		parseResult.InvocationConfiguration.Output.WriteLine($"{appInfo.Name} {appInfo.VersionShort} by {appInfo.Company}");
+		parseResult.InvocationConfiguration.Output.WriteLine($"{appInfo.Copyright}");
+		parseResult.InvocationConfiguration.Output.WriteLine(appInfo.WebSiteURL);
 		parseResult.InvocationConfiguration.Output.WriteLine();
 
 		// Output default help
@@ -29,9 +45,9 @@ internal class CustomHelpAction(HelpAction _defaultAction) : SynchronousCommandL
 		parseResult.InvocationConfiguration.Output.WriteLine();
 		parseResult.InvocationConfiguration.Output.WriteLine("PROCESS");
 		parseResult.InvocationConfiguration.Output.WriteLine("These are the steps the app takes to set a file or folder's timestamp:");
-		parseResult.InvocationConfiguration.Output.WriteLine("  1. Set timestamp to now, if specified");
-		parseResult.InvocationConfiguration.Output.WriteLine("  2. Apply absolute values, if any");
-		parseResult.InvocationConfiguration.Output.WriteLine("  3. Apply relative changes, if any");
+		parseResult.InvocationConfiguration.Output.WriteLine("  1. Set timestamp to current time (or to the creation time or to the modified time), if `--base-time` is specified.");
+		parseResult.InvocationConfiguration.Output.WriteLine("  2. Apply absolute values, if any.");
+		parseResult.InvocationConfiguration.Output.WriteLine("  3. Apply relative changes, if any.");
 		parseResult.InvocationConfiguration.Output.WriteLine();
 		parseResult.InvocationConfiguration.Output.WriteLine("EXAMPLES");
 		parseResult.InvocationConfiguration.Output.WriteLine("  Set Modified-Time of a file to the current date/time:");
@@ -160,7 +176,7 @@ public class Program
 		return result =>
 		{
 			string? value = result.GetValue(option);
-			if (value != null)
+			if (value is not null)
 			{
 				try
 				{
@@ -265,6 +281,8 @@ public class Program
 		rootCommand.Options.Add(hourOption);
 		rootCommand.Options.Add(minuteOption);
 		rootCommand.Arguments.Add(patternArgument);
+
+		CustomHelpAction.AttachCustomHelp(rootCommand);
 
 		// Add root-level validators
 		rootCommand.Validators.Add(result =>

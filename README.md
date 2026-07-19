@@ -12,7 +12,7 @@ file's modified time, or current time.
 
 ## Usage
 
-`TouchMax.exe [options] <pattern>`
+	TouchMax.exe [options] <pattern>
 
 | Option | Description |
 | :----- | :---------- |
@@ -47,12 +47,11 @@ Optionally, add the following option to establish a base timestamp:
 
 ## Process
 
-TouchMax follows these steps to set a file or folder's timestamp:
+TouchMax follows this process to set a file or folder's timestamp:
 
-	 1. Set timestamp to now (or to the creation time or to the modified time),
-		if `--base-time` is specified.
-	 2. Apply absolute values, if any.
-	 3. Apply relative changes, if any.
+1. Set timestamp to current time (or to the creation time or to the modified time), if `--base-time` is specified.
+1. Apply absolute values, if any.
+1. Apply relative changes, if any.
 
 ## Examples
 
